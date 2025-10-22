@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Campus Connect – Classroom</title>
+  <link rel="icon" href="CAMPUS CONNECT.jpg" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: #f2f4f8;
+      padding: 20px;
+    }
+
+    header {
+      background: #18ab91;
+      color: #fff;
+      text-align: center;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    header h1 {
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
+
+    .card {
+      background: #fff;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #eee;
+      margin-bottom: 14px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin-top: 6px;
+    }
+
+    .btn {
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: none;
+      background: #18ab91;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .secondary {
+      background: #fff;
+      color: #18ab91;
+      border: 1px solid #18ab91;
+    }
+
+    .list-item {
+      border: 1px solid #eee;
+      padding: 10px;
+      border-radius: 8px;
+      background: #fafafa;
+      margin-bottom: 8px;
+    }
+
+    .muted {
+      font-size: 12px;
+      color: #666;
+      margin-top: 6px;
+    }
+
+    .top-right {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-icon {
+      background: #fff;
+      color: #18ab91;
+      border: 1px solid #fff;
+      font-size: 18px;
+      border-radius: 50%;
+      width: 42px;
+      height: 42px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .btn-icon:hover {
+      background: #f8f8f8;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Classroom</h1>
+    <p id="userInfo" class="muted"></p>
+
+    <!-- 🧠 and 📊 buttons (top-right) -->
+    <div class="top-right">
+      <button class="btn-icon" title="Go to Tests" onclick="window.location='student.html'">🧠</button>
+      <button class="btn-icon" title="View Results" onclick="window.location='result.html'">📊</button>
+    </div>
+  </header>
+
+  <main style="max-width:900px;margin:0 auto;">
+    <div class="card">
+      <h3>🔗 Join a Class</h3>
+      <form id="joinForm" style="display:flex;gap:8px;align-items:center;max-width:600px;">
+        <input id="joinCode" placeholder="Enter Class Code (e.g. CC-ABC123)" required>
+        <button class="btn" type="submit">Join</button>
+      </form>
+      <div id="myClasses" style="margin-top:12px;"></div>
+    </div>
+  </main>
+
+  <script type="module">
+    import {
+      requireAuth, db,
+      collection, query, where, getDocs, onSnapshot, updateDoc, doc
+    } from "./firebase.js";
+
+    let me = null;
+
+    requireAuth(async (u) => {
+      me = u;
+      userInfo.textContent = `Signed in as ${me.email}`;
+      loadMyClasses();
+    });
+
+    joinForm.addEventListener("submit", async e => {
+      e.preventDefault();
+      const code = joinCode.value.trim();
+      if (!code) return;
+      const q = query(collection(db, "classes"), where("code", "==", code));
+      const snap = await getDocs(q);
+      if (snap.empty) return alert("Class not found.");
+      const cDoc = snap.docs[0];
+      const classId = cDoc.id;
+      const cData = cDoc.data();
+      const members = cData.members || [];
+      if (!members.includes(me.uid)) {
+        await updateDoc(doc(db, "classes", classId), { members: [...members, me.uid] });
+      }
+      joinForm.reset();
+      loadMyClasses();
+    });
+
+    function loadMyClasses() {
+      const q = query(collection(db, "classes"), where("members", "array-contains", me.uid));
+      onSnapshot(q, snap => {
+        myClasses.innerHTML = "";
+        if (snap.empty) myClasses.innerHTML = "<div class='muted'>No classes joined yet.</div>";
+        snap.forEach(docSnap => {
+          const c = docSnap.data();
+          const id = docSnap.id;
+          const div = document.createElement("div");
+          div.className = "list-item";
+          div.innerHTML = `<strong>${c.name}</strong>
+            <div class="muted">Code: <span style="color:#18ab91">${c.code}</span></div>
+            <div style="margin-top:8px;">
+              <button class="btn secondary" onclick="window.location='classes.html?id=${id}'">Open Class</button>
+            </div>`;
+          myClasses.appendChild(div);
+        });
+      });
+    }
+  </script>
+</body>
+
+</html>

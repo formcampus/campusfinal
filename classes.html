@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Campus Connect – Class</title>
+    <link rel="icon" href="CAMPUS CONNECT.jpg" />
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: "Segoe UI", Roboto, Arial, sans-serif;
+        }
+
+        body {
+            background: #f2f4f8;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        header {
+            background: #18ab91;
+            color: #fff;
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+            position: relative;
+        }
+
+        header h1 {
+            font-size: 20px;
+        }
+
+        .btn-back {
+            position: absolute;
+            left: 20px;
+            top: 16px;
+            background: #fff;
+            color: #18ab91;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .card {
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 10px;
+            padding: 12px;
+            margin-top: 14px;
+        }
+
+        /* scrollable sections */
+        .scroll-box {
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+
+        /* smaller box for questions */
+        #qaList.scroll-box {
+            max-height: 150px;
+        }
+
+        .scroll-box::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .scroll-box::-webkit-scrollbar-thumb {
+            background: #18ab91;
+            border-radius: 4px;
+        }
+
+        .list-item {
+            border: 1px solid #eee;
+            background: #fafafa;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .muted {
+            font-size: 12px;
+            color: #666;
+            margin-top: 6px;
+        }
+
+        textarea,
+        input,
+        select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            margin-top: 6px;
+        }
+
+        .btn {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: none;
+            background: #18ab91;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .secondary {
+            background: white;
+            color: #18ab91;
+            border: 1px solid #18ab91;
+        }
+
+        .reply-box {
+            margin-top: 8px;
+            background: #fff;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #eee;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <button class="btn-back" onclick="window.location='classroom.html'">←</button>
+        <h1 id="classTitle">Class</h1>
+        <p id="userInfo" class="muted"></p>
+    </header>
+
+    <main style="max-width:900px;margin:0 auto;">
+        <div class="card">
+            <h3>📢 Class Notices</h3>
+            <div id="classNotices" class="scroll-box"></div>
+        </div>
+        <div class="card">
+            <h3>💬 My Questions & Faculty Replies</h3>
+            <div id="qaList" class="scroll-box"></div>
+        </div>
+
+
+        <div class="card">
+            <h3>📝 Assignments</h3>
+            <div id="assignList"></div>
+        </div>
+
+
+        <div class="card">
+            <h3>📤 Submit Assignment / Ask Question</h3>
+            <form id="submitForm" style="display:flex;flex-direction:column;gap:8px;max-width:700px;">
+                <label>Type</label>
+                <select id="submitType">
+                    <option value="submission">Submit Assignment</option>
+                    <option value="question">Ask Question</option>
+                </select>
+                <input id="submitFor" placeholder="Assignment ID (optional)">
+                <input id="submitTitle" placeholder="Title (assignment name or question)" required>
+                <textarea id="submitMsg" rows="3" placeholder="Write message (answer or question)"></textarea>
+                <input type="file" id="submitFile" accept="image/*,.pdf">
+                <button class="btn" type="submit">Send</button>
+            </form>
+        </div>
+    </main>
+
+    <script type="module">
+        import {
+            requireAuth, db, storage,
+            collection, query, where, addDoc, onSnapshot, serverTimestamp,
+            sRef, uploadBytesResumable, getDownloadURL,
+            doc, getDoc, orderBy
+        } from "./firebase.js";
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const classId = urlParams.get("id");
+        if (!classId) {
+            alert("No class selected!");
+            window.location = "classroom.html";
+        }
+
+        let me = null;
+
+        requireAuth(async (u) => {
+            me = u;
+            userInfo.textContent = `Signed in as ${me.email}`;
+            loadClassDetails();
+        });
+
+        async function loadClassDetails() {
+            const snap = await getDoc(doc(db, "classes", classId));
+            if (!snap.exists()) {
+                alert("Class not found.");
+                window.location = "classroom.html";
+            }
+            const cData = snap.data();
+            classTitle.textContent = cData.name || "Class";
+
+            // --- Notices ---
+            const qNotices = query(collection(db, "classes", classId, "notices"), orderBy("createdAt", "desc"));
+            onSnapshot(qNotices, ns => {
+                classNotices.innerHTML = "";
+                if (ns.empty) classNotices.innerHTML = "<div class='muted'>No notices yet.</div>";
+                ns.forEach(docSnap => {
+                    const n = docSnap.data();
+                    const div = document.createElement("div");
+                    div.className = "list-item";
+                    div.innerHTML = `
+            <strong>${n.title}</strong>
+            <div>${n.message}</div>
+            ${n.fileURL ? `<div><a href='${n.fileURL}' target='_blank'>📎 File</a></div>` : ""}
+            <div class='muted'>Posted: ${n.createdAt?.toDate?.()?.toLocaleString?.() || ""}</div>`;
+                    classNotices.appendChild(div);
+                });
+            });
+
+            // --- Assignments ---
+            const qAssign = query(collection(db, "classes", classId, "assignments"), orderBy("createdAt", "desc"));
+            onSnapshot(qAssign, snap => {
+                assignList.innerHTML = "";
+                if (snap.empty) assignList.innerHTML = "<div class='muted'>No assignments yet.</div>";
+                snap.forEach(docSnap => {
+                    const a = docSnap.data();
+                    const id = docSnap.id;
+                    const div = document.createElement("div");
+                    div.className = "list-item";
+                    div.innerHTML = `
+            <strong>${a.title}</strong>
+            <div>${a.description || ""}</div>
+            ${a.fileURL ? `<div><a href='${a.fileURL}' target='_blank'>📎 File</a></div>` : ""}
+            <div class='muted'>Posted: ${a.createdAt?.toDate?.()?.toLocaleString?.() || ""}</div>
+            <div style='margin-top:8px;'><button class='btn secondary' onclick='document.getElementById("submitFor").value="${id}"'>Submit / Ask</button></div>`;
+                    assignList.appendChild(div);
+                });
+            });
+
+            // --- My Questions ---
+            const qRef = query(collection(db, "classes", classId, "questions"), where("studentUid", "==", me.uid), orderBy("createdAt", "desc"));
+            onSnapshot(qRef, qsnap => {
+                qaList.innerHTML = "";
+                if (qsnap.empty) qaList.innerHTML = "<div class='muted'>No questions yet.</div>";
+                qsnap.forEach(docSnap => {
+                    const q = docSnap.data();
+                    const div = document.createElement("div");
+                    div.className = "list-item";
+                    div.innerHTML = `
+            <strong>${q.title}</strong>
+            <div>${q.message}</div>
+            ${q.fileURL ? `<div><a href='${q.fileURL}' target='_blank'>📎 File</a></div>` : ""}
+            <div class='muted'>Asked: ${q.createdAt?.toDate?.()?.toLocaleString?.() || ""}</div>
+            ${q.reply ? `<div class='reply-box'><strong>Faculty Reply:</strong><div>${q.reply}</div></div>` : ""}`;
+                    qaList.appendChild(div);
+                });
+            });
+        }
+
+        // --- Submit (Assignment / Question) ---
+        submitForm.addEventListener("submit", async e => {
+            e.preventDefault();
+            const type = submitType.value;
+            const title = submitTitle.value.trim();
+            const msg = submitMsg.value.trim();
+            const file = submitFile.files[0];
+            let fileURL = "", fileName = "";
+            if (file) {
+                const path = `submissions/${classId}/${me.uid}_${Date.now()}_${file.name}`;
+                const ref = sRef(storage, path);
+                const uploadTask = await uploadBytesResumable(ref, file);
+                fileURL = await getDownloadURL(uploadTask.ref);
+                fileName = file.name;
+            }
+
+            if (type === "question") {
+                await addDoc(collection(db, "classes", classId, "questions"), {
+                    title, message: msg, fileURL, fileName,
+                    studentUid: me.uid, studentEmail: me.email,
+                    createdAt: serverTimestamp()
+                });
+            } else {
+                alert("Assignment submitted successfully!");
+            }
+            submitForm.reset();
+            alert("Sent!");
+        });
+    </script>
+</body>
+
+</html>

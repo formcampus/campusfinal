@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Student Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            margin: 0;
+            background: #f0f0f0;
+            color: #111;
+            padding: 20px;
+        }
+
+        header {
+            background: #128c7e;
+            color: white;
+            padding: 16px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 8px;
+        }
+
+        .card {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        input,
+        textarea,
+        select {
+            display: block;
+            margin: 8px 0;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            width: 100%;
+        }
+
+        .btn {
+            cursor: pointer;
+            border-radius: 6px;
+            padding: 8px 12px;
+            border: none;
+            font-weight: 600;
+            font-size: 14px;
+            margin: 4px;
+        }
+
+        .btn.primary {
+            background: #25d366;
+            color: white;
+        }
+
+        .btn.secondary {
+            background: #075e54;
+            color: white;
+        }
+
+        .test-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+            background: #fff;
+        }
+
+        .question {
+            margin-top: 12px;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+
+        .profile-box {
+            background: #e6ffef;
+            border: 1px solid #b2f2c8;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <header>📚 Student Panel</header>
+
+    <div class="card">
+        <h2>Student Information</h2>
+        <div id="profileBox" class="profile-box" style="display:none;"></div>
+        <input id="studentName" placeholder="Your Name" />
+        <input id="studentId" placeholder="Roll Number / ID" />
+        <input id="testCode" placeholder="Test Code (optional)" />
+        <button class="btn primary" onclick="loadTests()">Browse Available Tests</button>
+        <button class="btn secondary" onclick="searchByCode()">Search by Code</button>
+        <div id="loadError" style="color:red;"></div>
+    </div>
+
+    <div class="card">
+        <h2>Available Tests</h2>
+        <div id="testList"></div>
+    </div>
+
+    <div class="card" id="testSection" style="display:none;">
+        <h2 id="testTitle"></h2>
+        <p id="testDescription"></p>
+        <div id="questionArea"></div>
+        <button class="btn primary" onclick="submitAnswers()">Submit Answers</button>
+        <div id="submitStatus"></div>
+    </div>
+
+    <!-- Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, doc, getDoc, getDocs, query, where, addDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAFKmM22FUSQPYy-eMsBzcZN3bmAxglXl0",
+            authDomain: "smart-timetable-266fe.firebaseapp.com",
+            projectId: "smart-timetable-266fe",
+            storageBucket: "smart-timetable-266fe.firebasestorage.app",
+            messagingSenderId: "843230713835",
+            appId: "1:843230713835:web:b97d024f4fcf9a40ceabae",
+            measurementId: "G-DDY9NVEK8R"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        let currentUser = null;
+        let currentTest = null;
+
+        // ✅ Auto-fill user info
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                alert("Please sign in first.");
+                return;
+            }
+            currentUser = user;
+            const email = user.email;
+            const rollNo = email.split("@")[0];
+            const name = user.displayName || rollNo.replace(/\./g, " ");
+
+            document.getElementById("studentName").value = name;
+            document.getElementById("studentId").value = rollNo;
+
+            document.getElementById("studentName").disabled = true;
+            document.getElementById("studentId").disabled = true;
+
+            const profileBox = document.getElementById("profileBox");
+            profileBox.style.display = "block";
+            profileBox.innerHTML = `
+        <strong>👤 ${name}</strong><br>
+        📧 ${email}<br>
+        🆔 Roll No: <b>${rollNo}</b>
+      `;
+        });
+
+        // ✅ Load all available tests
+        async function loadTests() {
+            const name = document.getElementById("studentName").value.trim();
+            const sid = document.getElementById("studentId").value.trim();
+            if (!name || !sid) {
+                document.getElementById("loadError").textContent = "Please enter your name and ID.";
+                return;
+            }
+
+            document.getElementById("loadError").textContent = "";
+            const snap = await getDocs(collection(db, "tests"));
+            const container = document.getElementById("testList");
+            container.innerHTML = "";
+
+            snap.forEach(async (docSnap) => {
+                const t = docSnap.data();
+                const id = docSnap.id;
+                if (!t.published || t.resultsPublished) return;
+
+                const respSnap = await getDocs(query(collection(db, "responses"),
+                    where("testId", "==", id),
+                    where("studentId", "==", sid)
+                ));
+
+                const alreadyGiven = !respSnap.empty;
+                const div = document.createElement("div");
+                div.className = "test-card";
+                div.innerHTML = `
+          <h3>${t.title}</h3>
+          <p><strong>Duration:</strong> ${t.duration || "N/A"} min</p>
+          <p><strong>Questions:</strong> ${t.questions?.length || 0}</p>
+          <p><strong>Total Marks:</strong> ${(t.questions || []).reduce((sum, q) => sum + (q.marks || 0), 0)}</p>
+          <p><strong>Status:</strong> ${alreadyGiven ? "✅ Already Given" : "🟢 Not Yet Given"}</p>
+          <button class="btn secondary" onclick="startTest('${id}')" ${alreadyGiven ? "disabled" : ""}>Start Test</button>
+        `;
+                container.appendChild(div);
+            });
+        }
+
+        // ✅ Search test by code
+        async function searchByCode() {
+            const code = document.getElementById("testCode").value.trim();
+            const sid = document.getElementById("studentId").value.trim();
+            if (!code || !sid) {
+                document.getElementById("loadError").textContent = "Enter test code and ensure you’re signed in.";
+                return;
+            }
+
+            const docSnap = await getDoc(doc(db, "tests", code));
+            if (!docSnap.exists()) {
+                document.getElementById("loadError").textContent = "❌ Test not found.";
+                return;
+            }
+
+            const t = docSnap.data();
+            if (!t.published || t.resultsPublished) {
+                document.getElementById("loadError").textContent = "❌ Test unavailable.";
+                return;
+            }
+
+            startTest(code);
+        }
+
+        // ✅ Start test
+        async function startTest(id) {
+            const sid = document.getElementById("studentId").value.trim();
+            const respSnap = await getDocs(query(collection(db, "responses"),
+                where("testId", "==", id),
+                where("studentId", "==", sid)
+            ));
+            if (!respSnap.empty) {
+                document.getElementById("loadError").textContent = "⚠️ You have already given this test.";
+                return;
+            }
+
+            const docSnap = await getDoc(doc(db, "tests", id));
+            const t = docSnap.data();
+            currentTest = { id, ...t };
+
+            document.getElementById("testTitle").textContent = t.title;
+            document.getElementById("testDescription").textContent = t.description || "";
+            const qArea = document.getElementById("questionArea");
+            qArea.innerHTML = "";
+
+            (t.questions || []).forEach((q, i) => {
+                const div = document.createElement("div");
+                div.className = "question";
+                div.innerHTML = `<strong>Q${i + 1} (${q.marks} marks):</strong> ${q.text}<br>`;
+                if (q.type === "mcq" && q.options) {
+                    q.options.forEach(opt => {
+                        div.innerHTML += `<label><input type="radio" name="q${i}" value="${opt}"> ${opt}</label><br>`;
+                    });
+                } else {
+                    div.innerHTML += `<input type="text" name="q${i}" placeholder="Your answer" />`;
+                }
+                qArea.appendChild(div);
+            });
+
+            document.getElementById("testSection").style.display = "block";
+            document.getElementById("testSection").scrollIntoView({ behavior: "smooth" });
+        }
+
+        // ✅ Submit answers
+        async function submitAnswers() {
+            const name = document.getElementById("studentName").value.trim();
+            const sid = document.getElementById("studentId").value.trim();
+            const answers = {};
+
+            (currentTest.questions || []).forEach((q, i) => {
+                const n = "q" + i;
+                const selected = document.querySelector(`input[name="${n}"]:checked`);
+                answers[n] = selected ? selected.value : (document.querySelector(`input[name="${n}"]`)?.value.trim() || "");
+            });
+
+            await addDoc(collection(db, "responses"), {
+                testId: currentTest.id,
+                studentName: name,
+                studentId: sid,
+                submittedAt: new Date().toISOString(),
+                answers
+            });
+
+            document.getElementById("submitStatus").textContent = "✅ Submitted successfully!";
+            document.getElementById("testSection").style.display = "none";
+            document.getElementById("testList").scrollIntoView({ behavior: "smooth" });
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Campus Connect – Faculty Dashboard</title>
+  <link rel="icon" href="CAMPUS CONNECT.jpg" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: #f2f4f8;
+      padding: 20px;
+    }
+
+    header {
+      background: #18ab91;
+      color: #fff;
+      text-align: center;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    header img {
+      height: 70px;
+      display: block;
+      margin: 0 auto 8px;
+    }
+
+    header h1 {
+      font-size: 26px;
+      margin-bottom: 4px;
+    }
+
+    header p {
+      font-size: 15px;
+      opacity: 0.95;
+    }
+
+    .profile-btn,
+    .notice-btn {
+      position: absolute;
+      top: 20px;
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      background: #fff;
+      color: #18ab91;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .profile-btn {
+      right: 20px;
+    }
+
+    .notice-btn {
+      right: 75px;
+    }
+
+    .chat-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      max-width: 250px;
+      margin-top: 10px;
+    }
+
+    .chat-btn {
+      display: block;
+      padding: 12px;
+      text-align: center;
+      border: 2px solid #18ab91;
+      border-radius: 10px;
+      color: #18ab91;
+      text-decoration: none;
+      font-weight: 600;
+      background: #fff;
+      transition: 0.3s;
+    }
+
+    .chat-btn:hover {
+      background: #18ab91;
+      color: #fff;
+    }
+
+    .logout-btn {
+      margin-top: 30px;
+      padding: 12px 25px;
+      border-radius: 10px;
+      border: none;
+      background: #18ab91;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin-top: 6px;
+    }
+
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .modal-box {
+      background: #fff;
+      padding: 25px;
+      border-radius: 14px;
+      width: 90%;
+      max-width: 420px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .modal-box h2 {
+      color: #18ab91;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .close-btn {
+      margin-top: 10px;
+      display: block;
+      width: 100%;
+      background: #ccc;
+      color: #000;
+      padding: 8px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    #classList {
+      max-height: 300px;
+      overflow-y: auto;
+      background: #fff;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      padding: 10px;
+      box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    #classList::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #classList::-webkit-scrollbar-thumb {
+      background-color: #18ab91;
+      border-radius: 4px;
+    }
+
+    .class-card {
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 8px;
+      background: #fff;
+      margin-bottom: 8px;
+    }
+
+    .small-btn {
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid #18ab91;
+      background: #fff;
+      color: #18ab91;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .small-btn:hover {
+      background: #18ab91;
+      color: #fff;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <img src="CAMPUS CONNECT.jpg" alt="Campus Connect Logo">
+    <h1>Campus Connect</h1>
+    <p>Faculty Dashboard</p>
+    <button id="noticeBtn" class="notice-btn" title="View Global Notices">📰</button>
+    <button id="profileBtn" class="profile-btn" title="Profile">👤</button>
+  </header>
+
+  <main>
+    <section>
+      <h3>⚙️ Quick Actions</h3>
+      <div style="display:flex;flex-direction:column;gap:12px;max-width:280px;margin-top:10px;">
+        <button id="openCreateClassModal" class="chat-btn">➕ Create Classroom</button>
+        <button id="openPostNoticeModal" class="chat-btn">📰 Post Global Notice</button>
+        <button id="testBtn" class="chat-btn" onclick="window.location.href='teacher.html'">🧠 Test</button>
+      </div>
+    </section>
+
+    <section>
+      <h3>🏫 My Classes</h3>
+      <div id="classList"></div>
+    </section>
+
+    <section>
+      <h3>💬 Chat Options</h3>
+      <div class="chat-buttons">
+        <a href="chat.html" target="_blank" class="chat-btn">🌐 Global Chat</a>
+        <a href="private.html" target="_blank" class="chat-btn">💬 Private Chat</a>
+        <a href="groups.html" target="_blank" class="chat-btn">👥 Groups</a>
+      </div>
+    </section>
+
+    <button id="logoutBtn" class="logout-btn">Logout</button>
+  </main>
+
+  <!-- Create Classroom Modal -->
+  <div id="createClassModal" class="modal">
+    <div class="modal-box">
+      <h2>🏫 Create Classroom</h2>
+      <form id="classForm">
+        <input id="className" type="text" placeholder="Class Name (e.g. Physics 101)" required>
+        <input id="classCode" type="text" placeholder="Custom Class Code (optional)">
+        <button type="submit"
+          style="background:#18ab91;color:#fff;border:none;padding:10px;border-radius:8px;margin-top:10px;">Create</button>
+      </form>
+      <button id="closeClassModal" class="close-btn">Close</button>
+    </div>
+  </div>
+
+  <!-- Post Notice Modal -->
+  <div id="postNoticeModal" class="modal">
+    <div class="modal-box">
+      <h2>📰 Post Global Notice</h2>
+      <form id="noticeForm">
+        <input id="noticeTitle" type="text" placeholder="Notice Title" required>
+        <textarea id="noticeMessage" rows="3" placeholder="Write your notice..." required></textarea>
+        <input type="file" id="noticeFile" accept="image/*,.pdf">
+        <button type="submit"
+          style="background:#18ab91;color:#fff;border:none;padding:10px;border-radius:8px;margin-top:10px;">Post
+          Notice</button>
+      </form>
+      <button id="closePostNotice" class="close-btn">Close</button>
+    </div>
+  </div>
+
+  <!-- View Notices Modal -->
+  <div id="noticeModal" class="modal">
+    <div class="modal-box">
+      <h2>📢 Global Notices</h2>
+      <div id="noticeList"></div>
+      <button id="closeNotice" class="close-btn">Close</button>
+    </div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div id="profileModal" class="modal">
+    <div class="modal-box">
+      <h2>Your Profile</h2>
+      <label>Name</label>
+      <input type="text" id="profName" />
+      <label>Email</label>
+      <input type="email" id="profEmail" disabled />
+      <label>Role</label>
+      <input type="text" id="profRole" disabled />
+      <label>Bio</label>
+      <textarea id="profBio" rows="3"></textarea>
+      <button id="saveProfile"
+        style="background:#18ab91;color:#fff;border:none;padding:10px;border-radius:8px;margin-top:10px;">Save</button>
+      <button id="closeProfile" class="close-btn">Close</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      auth, db, storage, signOut, requireAuth,
+      collection, addDoc, query, where, onSnapshot,
+      serverTimestamp, sRef, uploadBytesResumable, getDownloadURL,
+      getUserProfile, saveUserProfile
+    } from "./firebase.js";
+
+    let faculty = null;
+
+    requireAuth(async (u) => {
+      faculty = u;
+      loadClasses();
+      loadGlobalNotices();
+    });
+
+    logoutBtn.onclick = () => signOut(auth).then(() => window.location.href = "index.html");
+
+    // Create Class Modal
+    openCreateClassModal.onclick = () => createClassModal.style.display = "flex";
+    closeClassModal.onclick = () => createClassModal.style.display = "none";
+
+    classForm.addEventListener("submit", async e => {
+      e.preventDefault();
+      const name = className.value.trim();
+      let code = classCode.value.trim();
+      if (!code) code = "CC-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+      await addDoc(collection(db, "classes"), {
+        name, code, creator: auth.currentUser.uid, members: [auth.currentUser.uid], createdAt: serverTimestamp()
+      });
+      alert(`Class "${name}" created. Code: ${code}`);
+      classForm.reset();
+      createClassModal.style.display = "none";
+    });
+
+    // Post Global Notice
+    openPostNoticeModal.onclick = () => postNoticeModal.style.display = "flex";
+    closePostNotice.onclick = () => postNoticeModal.style.display = "none";
+
+    noticeForm.addEventListener("submit", async e => {
+      e.preventDefault();
+      const title = noticeTitle.value.trim();
+      const msg = noticeMessage.value.trim();
+      const file = noticeFile.files[0];
+      let fileURL = "", fileName = "";
+      if (file) {
+        const path = `notices/${auth.currentUser.uid}/${Date.now()}_${file.name}`;
+        const ref = sRef(storage, path);
+        const uploadTask = await uploadBytesResumable(ref, file);
+        fileURL = await getDownloadURL(uploadTask.ref);
+        fileName = file.name;
+      }
+      await addDoc(collection(db, "notices"), {
+        title, message: msg, fileURL, fileName,
+        facultyId: auth.currentUser.uid,
+        createdAt: serverTimestamp()
+      });
+      alert("Global notice posted!");
+      noticeForm.reset();
+      postNoticeModal.style.display = "none";
+    });
+
+    // View Notices
+    noticeBtn.onclick = () => noticeModal.style.display = "flex";
+    closeNotice.onclick = () => noticeModal.style.display = "none";
+
+    function loadClasses() {
+      const q = query(collection(db, "classes"), where("creator", "==", auth.currentUser.uid));
+      onSnapshot(q, snap => {
+        classList.innerHTML = "";
+        snap.forEach(docSnap => {
+          const c = docSnap.data();
+          const id = docSnap.id;
+          const div = document.createElement("div");
+          div.className = "class-card";
+          div.innerHTML = `
+            <strong>${c.name}</strong><br>
+            Code: <span style="color:#18ab91">${c.code}</span><br>
+            Members: ${(c.members || []).length}<br>
+            <button class="small-btn" onclick="window.open('classroomf.html?classId=${id}', '_blank')">Open</button>`;
+          classList.appendChild(div);
+        });
+      });
+    }
+
+    function loadGlobalNotices() {
+      const q = query(collection(db, "notices"));
+      onSnapshot(q, snap => {
+        noticeList.innerHTML = "";
+        snap.forEach(docSnap => {
+          const n = docSnap.data();
+          const div = document.createElement("div");
+          div.className = "class-card";
+          div.innerHTML = `
+            <strong>${n.title}</strong><br>
+            <small>${n.message}</small><br>
+            ${n.fileURL ? `<a href="${n.fileURL}" target="_blank">📎 File</a><br>` : ""}
+            <span style="font-size:12px;color:#666;">${n.createdAt?.toDate?.()?.toLocaleString?.() || ""}</span>`;
+          noticeList.appendChild(div);
+        });
+      });
+    }
+
+    // Profile Modal
+    profileBtn.onclick = async () => {
+      const p = await getUserProfile(auth.currentUser.uid);
+      profName.value = p?.name || faculty.displayName || "";
+      profEmail.value = p?.email || faculty.email;
+      profRole.value = p?.role || "Faculty";
+      profBio.value = p?.bio || "";
+      profileModal.style.display = "flex";
+    };
+
+    closeProfile.onclick = () => profileModal.style.display = "none";
+
+    saveProfile.onclick = async () => {
+      await saveUserProfile(auth.currentUser.uid, {
+        name: profName.value,
+        email: profEmail.value,
+        role: profRole.value,
+        bio: profBio.value,
+        updatedAt: new Date()
+      });
+      alert("Profile saved!");
+      profileModal.style.display = "none";
+    };
+  </script>
+</body>
+
+</html>
